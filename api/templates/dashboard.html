@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ICU Real-time Monitoring</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; flex-direction: column; gap: 20px; }
+        h1 { text-align: center; }
+        .patient-info { 
+            text-align: center; 
+            background: #f5f5f5; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+        }
+        .controls { text-align: center; margin-bottom: 20px; }
+        select, button { padding: 8px; margin: 0 10px; }
+    </style>
+    
+    <!-- Highcharts -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+</head>
+<body>
+    <h1>ICU Real-time Monitoring</h1>
+    
+    <!-- Hiển thị thông tin bệnh nhân -->
+    <div class="patient-info" id="patientInfo">
+        Patient: <span id="patientId">p000001</span> | 
+        Age: <span id="patientAge">-</span> | 
+        Gender: <span id="patientGender">-</span>
+    </div>
+
+    <div class="controls">
+        <label>Patient ID: 
+            <select id="patientSelect">
+                <option value="p000001">p000001</option>
+                <option value="p000002">p000002</option>
+                <option value="p000003">p000003</option>
+                <option value="p000004">p000004</option>
+            </select>
+        </label>
+        <button onclick="changePatient()">Apply</button>
+    </div>
+
+    <div class="container">
+        <div id="vitalsChart" style="height: 450px;"></div>
+        <div id="labChart" style="height: 400px;"></div>
+        <div id="sepsisChart" style="height: 250px;"></div>
+    </div>
+
+    <script>
+        let vitalsChart, labChart, sepsisChart;
+        let currentPatient = 'p000001';
+
+        // Định nghĩa nhóm field
+        const VITALS_FIELDS = new Set([
+            "HR", "O2Sat", "Temp", "Resp", "SBP", "MAP", "DBP"
+        ]);
+        
+        const LAB_FIELDS = new Set([
+            "BUN", "Creatinine", "Glucose", "Lactate", "Platelets", "WBC",
+            "AST", "Bilirubin_total", "TroponinI", "Hct", "Hgb",
+            "BaseExcess", "HCO3", "FiO2", "pH", "PaCO2", "SaO2",
+            "Alkalinephos", "Calcium", "Chloride", "Magnesium", 
+            "Phosphate", "Potassium", "Bilirubin_direct",
+            "Fibrinogen", "PTT", "EtCO2"
+        ]);
+
+        async function fetchData() {
+            try {
+                const res = await fetch(`/query?patient_id=${currentPatient}`);
+                const data = await res.json();
+                
+                // Cập nhật thông tin bệnh nhân (Age, Gender)
+                const ageData = data.find(d => d.target === 'Age');
+                const genderData = data.find(d => d.target === 'Gender');
+                
+                if (ageData && ageData.datapoints.length > 0) {
+                    document.getElementById('patientAge').textContent = 
+                        ageData.datapoints[0][0] || '-';
+                }
+                
+                if (genderData && genderData.datapoints.length > 0) {
+                    const genderValue = genderData.datapoints[0][0];
+                    document.getElementById('patientGender').textContent = 
+                        genderValue === 0 ? 'Female' : 'Male';
+                }
+
+                // Lấy dữ liệu ICULOS (dùng làm trục X)
+                const iculosSeries = data.find(d => d.target === 'ICULOS');
+                let iculosValues = [];
+
+                if (!iculosSeries || iculosSeries.datapoints.length === 0) {
+                    console.warn('No ICULOS data found');
+                    iculosValues = [];
+                } else {
+                    iculosValues = iculosSeries.datapoints.map(point => point[0]);
+                }
+
+                // Hàm helper: ghép dữ liệu với ICULOS
+                const mapToIculos = (series) => {
+                    const values = series.datapoints.map(point => point[0]);
+                    return values.map((val, i) => [iculosValues[i] || 0, val]);
+                };
+
+                // Biểu đồ 1: Dấu hiệu sinh tồn
+                const vitalsSeries = data
+                    .filter(d => VITALS_FIELDS.has(d.target))
+                    .map(series => ({
+                        name: series.target,
+                        data: mapToIculos(series)
+                    }));
+
+                // Biểu đồ 2: Xét nghiệm
+                const labSeries = data
+                    .filter(d => LAB_FIELDS.has(d.target))
+                    .map(series => ({
+                        name: series.target,
+                        data: mapToIculos(series)
+                    }));
+
+                // --- Lấy dữ liệu SepsisLabel, SepsisWarning, SepsisConfirmed ---
+                const sepsisLabelSeries = data.find(d => d.target === 'SepsisLabel');
+                const sepsisWarningSeries = data.find(d => d.target === 'SepsisWarning');
+                const sepsisConfirmedSeries = data.find(d => d.target === 'SepsisConfirmed');
+
+                let sepsisLabelData = [];
+                let sepsisWarningData = [];
+                let sepsisConfirmedData = [];
+
+                if (sepsisLabelSeries) {
+                    const values = sepsisLabelSeries.datapoints.map(point => point[0]);
+                    sepsisLabelData = values.map((val, i) => [iculosValues[i] || 0, val]);
+                }
+
+                if (sepsisWarningSeries) {
+                    const values = sepsisWarningSeries.datapoints.map(point => point[0]);
+                    sepsisWarningData = values.map((val, i) => [iculosValues[i] || 0, val]);
+                }
+
+                if (sepsisConfirmedSeries) {
+                    const values = sepsisConfirmedSeries.datapoints.map(point => point[0]);
+                    sepsisConfirmedData = values.map((val, i) => [iculosValues[i] || 0, val]);
+                }
+
+                // Tạo dữ liệu "chưa xác nhận" = warning=1 và confirmed=0
+                let unconfirmedData = [];
+                const n = Math.max(sepsisWarningData.length, sepsisConfirmedData.length);
+                for (let i = 0; i < n; i++) {
+                    const iculos = iculosValues[i] || (i > 0 ? iculosValues[i-1] + 1 : 0);
+                    const warn = (sepsisWarningData[i] && sepsisWarningData[i][1] === 1) ? 1 : 0;
+                    const conf = (sepsisConfirmedData[i] && sepsisConfirmedData[i][1] === 1) ? 1 : 0;
+                    unconfirmedData.push([iculos, (warn && !conf) ? 1 : 0]);
+                }
+
+                // Cấu hình trục X
+                const xAxisConfig = {
+                    title: { text: 'ICU Hour (ICULOS)' },
+                    type: 'linear',
+                    min: 0,
+                    allowDecimals: false,
+                    startOnTick: true,
+                    endOnTick: true
+                };
+
+                // Khởi tạo/cập nhật biểu đồ Vitals & Lab (giữ nguyên)
+                if (!vitalsChart) {
+                    vitalsChart = Highcharts.chart('vitalsChart', {
+                        chart: { type: 'scatter', zoomType: 'x' },
+                        title: { text: 'Vital Signs' },
+                        xAxis: xAxisConfig,
+                        yAxis: { title: { text: 'Value' } },
+                        series: vitalsSeries,
+                        legend: { enabled: true },
+                        tooltip: { shared: true, valueDecimals: 2 },
+                        plotOptions: {
+                            series: {
+                                 marker: {
+                                    radius: 4,
+                                    symbol: 'circle'
+                                    },
+                            }
+                        }
+                    });
+                } else {
+                    vitalsChart.update({ 
+                        xAxis: xAxisConfig,
+                        series: vitalsSeries 
+                    }, true, true, false);
+                }
+
+                if (!labChart) {
+                    labChart = Highcharts.chart('labChart', {
+                        chart: { type: 'scatter', zoomType: 'x' },
+                        title: { text: 'Laboratory Values' },
+                        xAxis: xAxisConfig,
+                        yAxis: { title: { text: 'Value' } },
+                        series: labSeries,
+                        legend: { enabled: true },
+                        tooltip: { shared: true, valueDecimals: 2 },
+                        plotOptions: {
+                            series: {
+                                marker: {
+                                    radius: 4,
+                                    symbol: 'circle'
+                                    },
+                            }
+                        }
+                    });
+                } else {
+                    labChart.update({ 
+                        xAxis: xAxisConfig,
+                        series: labSeries 
+                    }, true, true, false);
+                }
+
+                // --- CẬP NHẬT SEPSIS CHART ---
+                if (!sepsisChart) {
+                    sepsisChart = Highcharts.chart('sepsisChart', {
+                        chart: { type: 'spline' },
+                        title: { text: 'Sepsis Alert' },
+                        xAxis: xAxisConfig,
+                        yAxis: { 
+                            title: { text: 'Sepsis Status' },
+                            min: -0.1,
+                            max: 1.1,
+                            tickInterval: 1,
+                            labels: {
+                                formatter: function() {
+                                    return this.value === 1 ? 'Yes' : this.value === 0 ? 'No' : '';
+                                }
+                            }
+                        },
+                        series: [
+                            // 1. SepsisLabel: đổi màu
+                            {
+                                name: 'Sepsis Label (Raw)',
+                                data: sepsisLabelData,
+                                lineWidth: 2,
+                                marker: { enabled: false },
+                                zones: [
+                                    { value: 0.5, color: '#2E8B57' },
+                                    { color: '#DC143C' }
+                                ],
+                                zIndex: 4
+                            },
+                            // 2. Vùng chưa xác nhận (nghi ngờ) → xanh nhạt
+                            {
+                                name: 'Suspected Sepsis',
+                                type: 'area',
+                                data: unconfirmedData,
+                                color: 'rgba(255, 193, 7, 0.2)',
+                                fillColor: 'rgba(255, 193, 7, 0.2)',
+                                lineWidth: 0,
+                                marker: { enabled: false },
+                                zIndex: 2
+                            },
+                            // 3. Vùng đã xác nhận (true positive) → đỏ mờ
+                            {
+                                name: 'Confirmed Sepsis',
+                                type: 'area',
+                                data: sepsisConfirmedData,
+                                color: 'rgba(220, 20, 60, 0.3)',
+                                fillColor: 'rgba(220, 20, 60, 0.3)',
+                                lineWidth: 0,
+                                marker: { enabled: false },
+                                zIndex: 3
+                            }
+                        ],
+                        tooltip: {
+                            shared: true,
+                            formatter: function() {
+                                let s = `<b>ICULOS: ${this.x}h</b><br/>`;
+                                this.points.forEach(point => {
+                                    if (point.series.name.includes('Sepsis')) {
+                                        const val = point.y === 1 ? 'Yes' : 'No';
+                                        s += `<span style="color:${point.series.color}">●</span> ${point.series.name}: <b>${val}</b><br/>`;
+                                    }
+                                });
+                                return s;
+                            }
+                        },
+                        legend: { enabled: true },
+                        plotOptions: {
+                            area: { marker: { enabled: false } }
+                        }
+                    });
+                } else {
+                    sepsisChart.series[0].setData(sepsisLabelData, false);
+                    sepsisChart.series[1].setData(unconfirmedData, false);
+                    sepsisChart.series[2].setData(sepsisConfirmedData, false);
+                    sepsisChart.redraw();
+                }
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function changePatient() {
+            currentPatient = document.getElementById('patientSelect').value;
+            document.getElementById('patientId').textContent = currentPatient;
+            fetchData();
+        }
+
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>

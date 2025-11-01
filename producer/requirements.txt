@@ -1,0 +1,3 @@
+pandas==2.2.2          # để đọc file .psv (dữ liệu dạng bảng)
+kafka-python==2.0.2    # client Kafka chuẩn để gửi message
+tqdm==4.66.3           # hiển thị progress bar khi stream

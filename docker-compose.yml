@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "
+        kafka-topics --create --bootstrap-server kafka:9092 --topic icu_data_1 --partitions 1 --replication-factor 1 2>/dev/null ||
+        echo 'Topic icu_data_1 already exists (or error ignored). Continuing...';
+        
+        kafka-topics --create --bootstrap-server kafka:9092 --topic icu_data_2 --partitions 1 --replication-factor 1 2>/dev/null ||
+        echo 'Topic icu_data_2 already exists (or error ignored). Continuing...';
+        
+        kafka-topics --create --bootstrap-server kafka:9092 --topic icu_data_3 --partitions 1 --replication-factor 1 2>/dev/null ||
+        echo 'Topic icu_data_3 already exists (or error ignored). Continuing...';
+        
+        kafka-topics --create --bootstrap-server kafka:9092 --topic icu_data_4 --partitions 1 --replication-factor 1 2>/dev/null ||
+        echo 'Topic icu_data_4 already exists (or error ignored). Continuing...'
+      "
+
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./cassandra/init.cql:/docker-entrypoint-initdb.d/init.cql
+    environment:
+      - CASSANDRA_CLUSTER_NAME=ICUMonitoring
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cassandra-init:
+    image: cassandra:4.1
+    container_name: cassandra-init
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./cassandra/init.cql:/init.cql
+    command: >
+      bash -c "
+        echo 'Waiting for Cassandra to be ready...' &&
+        cqlsh cassandra -e 'DESCRIBE KEYSPACES;' &&
+        echo 'Creating keyspace and table...' &&
+        cqlsh cassandra -f /init.cql &&
+        echo 'Done.' &&
+        exit 0
+      "
+
+
+
+  producer-1:
+    build:
+      context: ./producer
+      args:
+        HOST_DATA_DIR: data/p000001.psv
+        CONTAINER_DATA_DIR: /data/p000001.psv
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - KAFKA_TOPIC=icu_data_1
+      - FILE_PATH=/data/p000001.psv
+      - DELAY=2
+
+  
+  producer-2:
+    build:
+      context: ./producer
+      args:
+        HOST_DATA_DIR: data/p000002.psv
+        CONTAINER_DATA_DIR: /data/p000002.psv
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - KAFKA_TOPIC=icu_data_2
+      - FILE_PATH=/data/p000002.psv
+      - DELAY=2
+  
+  producer-3:
+    build:
+      context: ./producer
+      args:
+        HOST_DATA_DIR: data/p000003.psv
+        CONTAINER_DATA_DIR: /data/p000003.psv
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - KAFKA_TOPIC=icu_data_3
+      - FILE_PATH=/data/p000003.psv
+      - DELAY=2
+  
+  producer-4:
+    build:
+      context: ./producer
+      args:
+        HOST_DATA_DIR: data/p000004.psv
+        CONTAINER_DATA_DIR: /data/p000004.psv
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - KAFKA_TOPIC=icu_data_4
+      - FILE_PATH=/data/p000004.psv
+      - DELAY=2
+
+  spark-master:
+    build: ./spark
+    container_name: spark-master
+    ports:
+      - "7077:7077"
+      - "4040:4040"
+    environment:
+      - SPARK_MODE=master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 4040
+    depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
+
+  spark-worker-1:
+    build: ./spark
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker --webui-port 4041 spark://spark-master:7077
+    depends_on:
+      - spark-master
+
+  spark-worker-2:
+    build: ./spark
+    container_name: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker --webui-port 4042 spark://spark-master:7077
+    depends_on:
+      - spark-master
+
+
+  spark-app:
+    build: ./spark
+    container_name: spark-app
+    depends_on:
+      spark-master:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
+      kafka-init:  
+        condition: service_completed_successfully
+    command:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - spark://spark-master:7077
+      - --packages
+      - org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,com.datastax.spark:spark-cassandra-connector_2.12:3.5.0
+      - --conf
+      - spark.cassandra.connection.host=cassandra
+      - --conf
+      - spark.sql.streaming.checkpointLocation=/tmp/checkpoint
+      - /app/spark_stream.py
+    volumes:
+      - ./spark/ivy2:/home/spark/.ivy2
+
+  
+  api:
+    build: ./api
+    container_name: api
+    ports:
+      - "5000:5000"
+    environment:
+      - CASSANDRA_HOST=cassandra
+    depends_on:
+      cassandra-init:  
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+
+
+      
+      
+volumes:
+  cassandra_data:

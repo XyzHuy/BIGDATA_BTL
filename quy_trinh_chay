@@ -1,0 +1,18 @@
+# 1. Build
+docker-compose build
+
+# 2. Chạy toàn bộ (kể cả kafka-init, spark-app, nhưng KHÔNG producer)
+docker compose up -d --scale producer-1=0 --scale producer-2=0 --scale producer-3=0 --scale producer-4=0
+
+
+
+# 3. Chờ Spark-app trong docker desktop ready
+khi đã xuất hiện đoạn === Processing batch 0 ===
+
+# 4. Mở http://localhost:5000/dashboard -> chọn Patient ID -> apply
+
+# 5. Chạy producer thật
+docker-compose up -d producer-1 producer-2 producer-3 producer-4
+
+
+Xem dữ liệu đc stream và xử lý tại http://localhost:5000/dashboard

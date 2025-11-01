@@ -1,0 +1,21 @@
+realtime-icu-monitoring/
+│
+├── docker-compose.yml
+├── spark/
+│   ├── app/
+│   │   ├── spark_stream.py        # Spark Streaming app (Kafka → Cassandra)
+│   │   └── requirements.txt
+│   └── Dockerfile
+│
+├── producer/
+│   ├── sepsis_producer.py       # Python Kafka producer
+│   ├── requirements.txt
+|   ├── data/
+|   |   ├──.psv files
+│   └── Dockerfile
+│
+├── cassandra/
+│   └── init.cql                  # Script tạo keyspace và bảng
+│
+└── grafana/
+    └── dashboards/               # JSON dashboards mẫu
