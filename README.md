@@ -11,6 +11,22 @@ Dữ liệu đầu vào được mô phỏng từ bộ dữ liệu PhysioNet/Com
 ## Data flow
 Dữ liệu được thu thập từ các tệp .psv, gửi qua Apache Kafka, xử lý và dự đoán bằng Apache Spark Streaming, lưu trữ kết quả vào Apache Cassandra, và cuối cùng cung cấp API truy vấn qua Flask để trực quan hóa trên giao diện web.
 
+### Chi tiết:
+Các file .psv được để trong producer/data. Trong đó producer/sepsis_producer.py có nhiệm vụ là giả lập một máy đo các dấu hiệu sinh tồn và chỉ số xét nghiệm và gửi cho kafka topic theo thời gian thực
+Việc lựa chọn các bệnh nhân để theo dõi ở trong .env (tối đa 4 bệnh nhân)
+
+Apache Spark Streaming đc để trong spark/app/spark_stream.py có tác dụng lấy các dữ liệu đang được gửi qua các topic trong kafka để xử lý (Preprocessing dữ liệu + inference model) và gửi dữ liệu đã đc xử lý cho cassandra
+
+Cassandra gồm bảng sepsis_monitoring.icu_readings chứa các cột chứa các chỉ số & dấu hiệu mà spark đưa cho. Được khởi động bằng cassandra/init.cql
+
+Flask sẽ phụ trách việc đọc các dữ liệu trong cassandra theo thời gian thực và cập nhật Highchart để visual dữ liệu. Nơi chứa các ENDPOINT (mã flask) ở trong api/app.py, frontend chứa các bảng highchart được để ở api/templates/dashboard.html
+
+reload_server.py có tác dụng làm 1 server trung gian thực hiện restart một số container khi trigger nút reload simulation 
+
+
+
+
+
 ## Kiến trúc hệ thống
 
 #### *Thu thập dữ liệu:*
