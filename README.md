@@ -15,11 +15,11 @@ Dữ liệu được thu thập từ các tệp .psv, gửi qua Apache Kafka, x�
 
 #### *Thu thập dữ liệu:*
 
-    Bốn producer (mỗi producer tương ứng một bệnh nhân) đọc tuần tự các dòng từ tệp .psv và gửi từng bản ghi dưới dạng JSON vào bốn topic Kafka riêng biệt (**icu_data_1** đến **icu_data_4**). Việc sử dụng Kafka đảm bảo tính đáng tin cậy và khả năng mở rộng
+Bốn producer (mỗi producer tương ứng một bệnh nhân) đọc tuần tự các dòng từ tệp .psv và gửi từng bản ghi dưới dạng JSON vào bốn topic Kafka riêng biệt (**icu_data_1** đến **icu_data_4**). Việc sử dụng Kafka đảm bảo tính đáng tin cậy và khả năng mở rộng
 
 #### *Lưu trữ:*
 
-    Apache Cassandra được sử dụng làm hệ thống lưu trữ phân tán, tối ưu cho ghi/đọc dữ liệu theo thời gian thực. Schema được khởi tạo sẵn qua file**init.cql** với **keyspace icu_monitoring** và bảng lưu trữ dữ liệu bệnh nhân kèm kết quả dự đoán sepsis.
+Apache Cassandra được sử dụng làm hệ thống lưu trữ phân tán, tối ưu cho ghi/đọc dữ liệu theo thời gian thực. Schema được khởi tạo sẵn qua file**init.cql** với **keyspace icu_monitoring** và bảng lưu trữ dữ liệu bệnh nhân kèm kết quả dự đoán sepsis.
 
 #### *Xử lý & Dự đoán:*
 
@@ -33,5 +33,5 @@ Dữ liệu được thu thập từ các tệp .psv, gửi qua Apache Kafka, x�
 * Ghi kết quả (dữ liệu thô + nhãn dự đoán + xác suất) vào Cassandra thông qua Spark Cassandra Connector.
 
 #### *API & Visualize*
-    Ứng dụng Flask đóng vai trò trung gian, cung cấp REST API để truy vấn dữ liệu đã xử lý từ Cassandra theo ID bệnh nhân và khoảng thời gian. Hỗ trợ trả về dữ liệu theo định dạng phù hợp với biểu đồ thời gian (time-series), thuận tiện cho việc trực quan hóa và giám sát bằng Highcharts trên giao diện web.
+Ứng dụng Flask đóng vai trò trung gian, cung cấp REST API để truy vấn dữ liệu đã xử lý từ Cassandra theo ID bệnh nhân và khoảng thời gian. Hỗ trợ trả về dữ liệu theo định dạng phù hợp với biểu đồ thời gian (time-series), thuận tiện cho việc trực quan hóa và giám sát bằng Highcharts trên giao diện web.
 
