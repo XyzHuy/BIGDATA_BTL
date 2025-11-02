@@ -20,4 +20,4 @@ ENV KAFKA_TOPIC=icu_data
 ENV FILE_PATH=/data/p000001.psv
 ENV DELAY=2
 
-CMD ["python", "sepsis_producer.py"]
+CMD ["bash", "-c", "sleep 3 && python sepsis_producer.py"]

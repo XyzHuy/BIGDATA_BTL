@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, render_template
 import os
 from cassandra.cluster import Cluster
-
+import requests
 app = Flask(__name__, template_folder='templates')
 
 CASSANDRA_HOST = os.getenv('CASSANDRA_HOST', 'cassandra')
@@ -9,6 +9,8 @@ KEYSPACE = 'sepsis_monitoring'
 
 cluster = Cluster([CASSANDRA_HOST])
 session = cluster.connect(KEYSPACE)
+
+is_loading = False  # trạng thái để UI biết reload đang diễn ra
 
 # Danh sách tất cả các field (trừ patient_id, event_time, icu_time_step)
 ALL_FIELDS = [
@@ -21,6 +23,42 @@ ALL_FIELDS = [
     "HospAdmTime", "ICULOS", "SepsisProb", "SepsisWarning", "SepsisConfirmed"
 ]
 
+def get_patient_ids():
+    return [
+        os.getenv('P1').replace('.psv', ''),
+        os.getenv('P2').replace('.psv', ''),
+        os.getenv('P3').replace('.psv', ''),
+        os.getenv('P4').replace('.psv', ''),
+    ]
+PATIENT_IDS = get_patient_ids()
+
+
+@app.route('/reload', methods=['POST'])
+def reload_simulation():
+    global is_loading
+    try:
+        is_loading = True
+
+        # Gửi tín hiệu ra host để restart docker, xóa bảng và xóa checkpoint
+        requests.post("http://host.docker.internal:6000/trigger-reload")
+
+        return jsonify({"status": "ok", "message": "Simulation reloaded successfully."})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/reload-done-internal', methods=['POST'])
+def reload_done_internal():
+    global is_loading
+    print("[Container] Reload completed ")
+    is_loading = False
+    return jsonify({"status": "ok"})
+
+@app.route('/reload-status')
+def reload_status():
+    """API cho frontend kiểm tra trạng thái loading"""
+    return jsonify({"loading": is_loading})
+
 @app.route('/health')
 def health():
     return jsonify({"status": "OK"})
@@ -31,7 +69,7 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    return render_template('dashboard.html', patient_id='p000001')
+    return render_template('dashboard.html',patient_ids=PATIENT_IDS)
 
 @app.route('/debug/<patient_id>')
 def debug_patient(patient_id):

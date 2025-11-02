@@ -92,6 +92,7 @@ df = spark \
     .option("kafka.bootstrap.servers", "kafka:9092") \
     .option("subscribe", topics) \
     .option("maxOffsetsPerTrigger", 4) \
+    .option("startingOffsets", "earliest") \
     .load()
 
 

@@ -16,6 +16,33 @@
         }
         .controls { text-align: center; margin-bottom: 20px; }
         select, button { padding: 8px; margin: 0 10px; }
+
+        /* Overlay loading */
+        #loadingOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            font-size: 20px;
+            color: #333;
+        }
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #007bff;
+            border-radius: 50%;
+            width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     
     <!-- Highcharts -->
@@ -35,13 +62,18 @@
     <div class="controls">
         <label>Patient ID: 
             <select id="patientSelect">
-                <option value="p000001">p000001</option>
-                <option value="p000002">p000002</option>
-                <option value="p000003">p000003</option>
-                <option value="p000004">p000004</option>
+                {% for pid in patient_ids %}
+                <option value="{{ pid }}">{{ pid }}</option>
+                {% endfor %}
             </select>
         </label>
         <button onclick="changePatient()">Apply</button>
+        <button id="reload-btn" style="background:#007bff;color:white;border:none;border-radius:4px;"> Reload Simulation</button>
+    </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div>Reloading simulation, please wait...</div>
     </div>
 
     <div class="container">
@@ -49,10 +81,48 @@
         <div id="labChart" style="height: 400px;"></div>
         <div id="sepsisChart" style="height: 250px;"></div>
     </div>
+     <script>
+        // --- Loading UI logic ---
+        const overlay = document.getElementById('loadingOverlay');
+
+        async function showLoading() {
+            overlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            overlay.style.display = 'none';
+        }
+
+        // Gọi API reload → bật loading → polling /reload-status để biết khi nào xong
+        document.getElementById("reload-btn").addEventListener("click", async () => {
+            if (!confirm("Reload simulation? This will clear all data.")) return;
+
+            showLoading();
+
+            try {
+                await fetch("/reload", { method: "POST" });
+
+                // Poll mỗi 3s xem reload xong chưa
+                const interval = setInterval(async () => {
+                    const res = await fetch("/reload-status");
+                    const data = await res.json();
+                    if (!data.loading) {
+                        clearInterval(interval);
+                        hideLoading();
+                        alert("Reload complete!");
+                        location.reload();
+                    }
+                }, 3000);
+            } catch (e) {
+                hideLoading();
+                alert("Failed to start reload: " + e);
+            }
+        });
+    </script>
 
     <script>
         let vitalsChart, labChart, sepsisChart;
-        let currentPatient = 'p000001';
+        let currentPatient = '{{ patient_ids[0] }}';
 
         // Định nghĩa nhóm field
         const VITALS_FIELDS = new Set([

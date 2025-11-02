@@ -91,15 +91,15 @@ services:
     build:
       context: ./producer
       args:
-        HOST_DATA_DIR: data/p000001.psv
-        CONTAINER_DATA_DIR: /data/p000001.psv
+        HOST_DATA_DIR: data/${P1}
+        CONTAINER_DATA_DIR: /data/${P1}
     depends_on:
       kafka:
         condition: service_healthy
     environment:
       - KAFKA_SERVER=kafka:9092
       - KAFKA_TOPIC=icu_data_1
-      - FILE_PATH=/data/p000001.psv
+      - FILE_PATH=/data/${P1}
       - DELAY=2
 
   
@@ -107,45 +107,45 @@ services:
     build:
       context: ./producer
       args:
-        HOST_DATA_DIR: data/p000002.psv
-        CONTAINER_DATA_DIR: /data/p000002.psv
+        HOST_DATA_DIR: data/${P2}
+        CONTAINER_DATA_DIR: /data/${P2}
     depends_on:
       kafka:
         condition: service_healthy
     environment:
       - KAFKA_SERVER=kafka:9092
       - KAFKA_TOPIC=icu_data_2
-      - FILE_PATH=/data/p000002.psv
+      - FILE_PATH=/data/${P2}
       - DELAY=2
   
   producer-3:
     build:
       context: ./producer
       args:
-        HOST_DATA_DIR: data/p000003.psv
-        CONTAINER_DATA_DIR: /data/p000003.psv
+        HOST_DATA_DIR: data/${P3}
+        CONTAINER_DATA_DIR: /data/${P3}
     depends_on:
       kafka:
         condition: service_healthy
     environment:
       - KAFKA_SERVER=kafka:9092
       - KAFKA_TOPIC=icu_data_3
-      - FILE_PATH=/data/p000003.psv
+      - FILE_PATH=/data/${P3}
       - DELAY=2
   
   producer-4:
     build:
       context: ./producer
       args:
-        HOST_DATA_DIR: data/p000004.psv
-        CONTAINER_DATA_DIR: /data/p000004.psv
+        HOST_DATA_DIR: data/${P4}
+        CONTAINER_DATA_DIR: /data/${P4}
     depends_on:
       kafka:
         condition: service_healthy
     environment:
       - KAFKA_SERVER=kafka:9092
       - KAFKA_TOPIC=icu_data_4
-      - FILE_PATH=/data/p000004.psv
+      - FILE_PATH=/data/${P4}
       - DELAY=2
 
   spark-master:
@@ -214,6 +214,7 @@ services:
     volumes:
       - ./spark/ivy2:/home/spark/.ivy2
 
+
   
   api:
     build: ./api
@@ -222,6 +223,10 @@ services:
       - "5000:5000"
     environment:
       - CASSANDRA_HOST=cassandra
+      - P1=${P1}   
+      - P2=${P2}
+      - P3=${P3}
+      - P4=${P4}
     depends_on:
       cassandra-init:  
         condition: service_completed_successfully
