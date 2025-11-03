@@ -237,9 +237,5 @@ services:
       retries: 10
       start_period: 10s
 
-
-
-      
-      
 volumes:
   cassandra_data:

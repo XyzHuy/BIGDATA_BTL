@@ -7,8 +7,10 @@
 
 3 - Build Docker : 
      - Mở một terminal mới, sau đó chạy lệnh: docker-compose build 
+
 4 - Chạy toàn bộ hệ thống : 
      - Chạy lệnh trên terminal: docker compose up -d
+     
 5 - Truy cập Dashboard : 
      - Mở trình duyệt và truy cập: http://localhost:5000/dashboard
      - Chọn Patient ID mong muốn

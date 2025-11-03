@@ -17,10 +17,10 @@ df_mean_std = pd.read_pickle('/app/models/mean_std_scaling.pkl')
 # định nghĩa các cột như training
 cols_cont = ['HR', 'MAP', 'O2Sat', 'SBP', 'Resp']
 cols_to_bin = ['Unit1', 'Gender', 'HospAdmTime', 'Age', 'DBP', 'Temp', 'Glucose', 
-               'Potassium', 'Hct', 'FiO2', 'Hgb', 'pH', 'BUN', 'WBC', 'Magnesium', 
-               'Creatinine', 'Platelets', 'Calcium', 'PaCO2', 'BaseExcess', 'Chloride', 
-               'HCO3', 'Phosphate', 'EtCO2', 'SaO2', 'PTT', 'Lactate', 'AST', 
-               'Alkalinephos', 'Bilirubin_total', 'TroponinI', 'Fibrinogen', 'Bilirubin_direct']
+                'Potassium', 'Hct', 'FiO2', 'Hgb', 'pH', 'BUN', 'WBC', 'Magnesium', 
+                'Creatinine', 'Platelets', 'Calcium', 'PaCO2', 'BaseExcess', 'Chloride', 
+                'HCO3', 'Phosphate', 'EtCO2', 'SaO2', 'PTT', 'Lactate', 'AST', 
+                'Alkalinephos', 'Bilirubin_total', 'TroponinI', 'Fibrinogen', 'Bilirubin_direct']
 
 
 # 1. Define Schema
@@ -106,7 +106,6 @@ parsed_df = parsed_df.withColumn("event_time", current_timestamp())
 
 
 # 5. Placeholder inference model
-
 
 # Thêm dict lưu prediction state
 patient_predictions = {}
@@ -258,8 +257,8 @@ def process_batch(batch_df, batch_id):
 
         output_rows.append(row_dict)
         print(f"[{pid}] ICULOS={current_iculos}, raw={raw_label}, has_warning={state['has_warning']}, "
-      f"recent={list(state['recent_labels'])}, last_pos={state['last_positive_iculos']}, "
-      f"first_warn={state['first_warning_iculos']}, confirmed={is_confirmed}")
+        f"recent={list(state['recent_labels'])}, last_pos={state['last_positive_iculos']}, "
+        f"first_warn={state['first_warning_iculos']}, confirmed={is_confirmed}")
         
 
     # Ghi toàn bộ dòng trong batch
