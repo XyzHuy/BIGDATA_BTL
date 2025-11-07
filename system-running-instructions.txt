@@ -11,9 +11,9 @@
      
 4 - Truy cập Dashboard : 
      - Mở trình duyệt và truy cập: http://localhost:5000/dashboard
-     - Chọn Patient ID mong muốn
-     Nhấn Apply và đợi Spark app tải batch dữ liệu để hiển thị biểu đồ trực quan (visualization)
+     - Chọn Patient ID mong muốn 
+     - Nhấn Apply và đợi Spark app tải batch dữ liệu để hiển thị biểu đồ trực quan (visualization)
 
 5 - Để chạy lại giả lập gửi dữ liệu stream cho spark:
      Stop container rồi run lại (trên Docker Desktop UI)
-     hoặc down -> compose up-d
+     hoặc docker compose down rồi chạy lệnh docker compose up -d

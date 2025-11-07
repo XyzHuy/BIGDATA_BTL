@@ -6,7 +6,6 @@ import math
 import pandas as pd
 from kafka import KafkaProducer
 
-
 def replace_nan_with_none(obj):
     """Recursively replace float('nan') with None for JSON compatibility."""
     if isinstance(obj, float) and math.isnan(obj):
@@ -30,7 +29,6 @@ def stream_file(file_path, producer, topic, delay=2):
         record["icu_time_step"] = idx
         json_str = json.dumps(record, allow_nan=False)
         print("DEBUG JSON:", json_str[:200] + "...")
-       
 
         producer.send(topic, value=record)
         print(f"[{patient_id}] Sent row {idx+1}/{len(df)} (SepsisLabel={record.get('SepsisLabel')})")
@@ -54,7 +52,6 @@ def main():
     producer = KafkaProducer(
         bootstrap_servers=[kafka_server],
         value_serializer=lambda v: json.dumps(v, allow_nan=False).encode('utf-8')
-        # ⚠️ allow_nan=False sẽ raise lỗi nếu còn NaN → giúp debug!
     )
 
     try:
@@ -63,8 +60,5 @@ def main():
         producer.flush()
         producer.close()
 
-
 if __name__ == "__main__":
     main()
-
-#view data via Kafka docker exec -it kafka kafka-console-consumer --bootstrap-server kafka:9092 --topic icu_data --from-beginning

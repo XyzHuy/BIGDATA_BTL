@@ -4,49 +4,281 @@
     <title>ICU Real-time Monitoring</title>
     <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { display: flex; flex-direction: column; gap: 20px; }
-        h1 { text-align: center; }
-        .patient-info { 
-            text-align: center; 
-            background: #f5f5f5; 
-            padding: 10px; 
-            border-radius: 5px; 
-            margin-bottom: 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .controls { text-align: center; margin-bottom: 20px; }
-        select, button { padding: 8px; margin: 0 10px; }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 { 
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            animation: fadeInDown 0.8s ease;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container { 
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .patient-info { 
+            background: linear-gradient(145deg, #ffffff, #f0f9ff);
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            animation: fadeIn 1s ease;
+            transition: all 0.3s ease;
+        }
+
+        .patient-info:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .patient-info span {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .controls { 
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            animation: slideUp 0.8s ease;
+            transition: all 0.3s ease;
+        }
+
+        .controls:hover {
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.2);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .controls label {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.05em;
+        }
+
+        select {
+            padding: 12px 20px;
+            margin: 0 15px;
+            border: 2px solid #e0e7ff;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        select:hover {
+            border-color: #667eea;
+            background: #f0f9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        select:focus {
+            border-color: #667eea;
+            background: #f0f9ff;
+        }
+
+        button {
+            padding: 12px 35px;
+            margin: 0 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:hover:before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: all 0.4s ease;
+            animation: scaleIn 0.6s ease;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .chart-container:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 45px rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        #vitalsChart, #labChart, #sepsisChart {
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        /* Pulse animation cho status indicator */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .patient-info::before {
+            content: '●';
+            color: #10b981;
+            font-size: 1.2em;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                padding: 15px;
+            }
+
+            select, button {
+                margin: 5px;
+                width: calc(100% - 10px);
+            }
+        }
+
+        * {
+            transition: all 0.3s ease;
+        }
     </style>
     
-    <!-- Highcharts -->
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
 </head>
 <body>
-    <h1>ICU Real-time Monitoring</h1>
+    <h1>🏥 ICU Real-time Monitoring</h1>
     
-    <!-- Hiển thị thông tin bệnh nhân -->
-    <div class="patient-info" id="patientInfo">
-        Patient: <span id="patientId">p000001</span> | 
-        Age: <span id="patientAge">-</span> | 
-        Gender: <span id="patientGender">-</span>
-    </div>
-
-    <div class="controls">
-        <label>Patient ID: 
-            <select id="patientSelect">
-                    {% for pid in patient_ids %}
-                    <option value="{{ pid }}">{{ pid }}</option>
-                    {% endfor %}
-            </select>
-        </label>
-        <button onclick="changePatient()">Apply</button>
-    </div>
-
     <div class="container">
-        <div id="vitalsChart" style="height: 450px;"></div>
-        <div id="labChart" style="height: 400px;"></div>
-        <div id="sepsisChart" style="height: 250px;"></div>
+        <div class="patient-info" id="patientInfo">
+            Patient: <span id="patientId">p000001</span> | 
+            Age: <span id="patientAge">-</span> | 
+            Gender: <span id="patientGender">-</span>
+        </div>
+
+        <div class="controls">
+            <label>Patient ID: 
+                <select id="patientSelect">
+                        {% for pid in patient_ids %}
+                        <option value="{{ pid }}">{{ pid }}</option>
+                        {% endfor %}
+                </select>
+            </label>
+            <button onclick="changePatient()">Apply</button>
+        </div>
+
+        <div class="chart-container">
+            <div id="vitalsChart" style="height: 450px;"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div id="labChart" style="height: 400px;"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div id="sepsisChart" style="height: 250px;"></div>
+        </div>
     </div>
 
     <script>
@@ -176,7 +408,7 @@
                         tooltip: { shared: true, valueDecimals: 2 },
                         plotOptions: {
                             series: {
-                                 marker: {
+                                    marker: {
                                     radius: 4,
                                     symbol: 'circle'
                                     },
@@ -233,6 +465,7 @@
                             }
                         },
                         series: [
+                            
                             // 1. SepsisLabel: đổi màu
                             {
                                 name: 'Sepsis Label (Raw)',
@@ -240,29 +473,31 @@
                                 lineWidth: 2,
                                 marker: { enabled: false },
                                 zones: [
-                                    { value: 0.5, color: '#2E8B57' },
-                                    { color: '#DC143C' }
+                                    { value: 0.5, color: '#00db5fff' },
+                                    { color: '#f80939ff' }
                                 ],
                                 zIndex: 4
                             },
+
                             // 2. Vùng chưa xác nhận (nghi ngờ) → xanh nhạt
                             {
                                 name: 'Suspected Sepsis',
                                 type: 'area',
                                 data: unconfirmedData,
-                                color: 'rgba(255, 193, 7, 0.2)',
-                                fillColor: 'rgba(255, 193, 7, 0.2)',
+                                color: 'rgba(246, 207, 12, 1)',
+                                fillColor: 'rgba(244, 207, 35, 1)',
                                 lineWidth: 0,
                                 marker: { enabled: false },
                                 zIndex: 2
                             },
+
                             // 3. Vùng đã xác nhận (true positive) → đỏ mờ
                             {
                                 name: 'Confirmed Sepsis',
                                 type: 'area',
                                 data: sepsisConfirmedData,
-                                color: 'rgba(220, 20, 60, 0.3)',
-                                fillColor: 'rgba(220, 20, 60, 0.3)',
+                                color: 'rgba(206, 30, 65, 1)',
+                                fillColor: 'rgba(202, 75, 100, 0.79)',
                                 lineWidth: 0,
                                 marker: { enabled: false },
                                 zIndex: 3

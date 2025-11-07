@@ -31,7 +31,7 @@ Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
 ⚙️ Chi tiết luồng hoạt động: 
 
-### 1. Producer (producer/sepsis_producer.py):
+### 1. 📻 Producer (producer/sepsis_producer.py):
 
 - Mỗi producer đọc tuần tự từng dòng trong file .psv.
 
@@ -41,13 +41,13 @@ Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
 - Các bệnh nhân được chọn để mô phỏng được cấu hình trong file .env (tối đa 4 bệnh nhân đồng thời).
 
-### 2. Kafka Broker:
+### 2. 👉 Kafka Broker:
 
 - Đóng vai trò trung gian truyền dữ liệu theo mô hình publish–subscribe.
 
 - Đảm bảo tính toàn vẹn, độ trễ thấp và khả năng mở rộng khi nhiều producer và consumer hoạt động song song.
 
-### 3. Spark Streaming Application (spark/app/spark_stream.py):
+### 3. 👉 Spark Streaming Application (spark/app/spark_stream.py):
 
 - Là consumer chính nhận dữ liệu từ Kafka.
 
@@ -73,7 +73,7 @@ Ghi kết quả gồm:
 
 Toàn bộ kết quả được ghi trực tiếp vào Apache Cassandra thông qua Spark Cassandra Connector.
 
-### 4. Apache Cassandra (cassandra/init.cql):
+### 4. ✅ Apache Cassandra (cassandra/init.cql):
 
 - Lưu trữ dữ liệu đầu ra trong bảng icu_readings thuộc keyspace sepsis_monitoring.
 
@@ -83,7 +83,7 @@ Cấu trúc dữ liệu tối ưu cho truy vấn thời gian thực theo:
 
 Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất đọc/ghi cao và khả năng mở rộng khi dữ liệu ICU tăng nhanh.  
 
-### 5. Flask API Server (api/app.py):
+### 5. ✅ Flask API Server (api/app.py):
 
 - Đóng vai trò trung gian giữa Cassandra và Frontend.
 - Cung cấp các RESTful API endpoint cho phép truy vấn dữ liệu:
@@ -92,7 +92,7 @@ Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất
 - Kết quả được trả về dạng JSON, phù hợp cho frontend vẽ biểu đồ thời gian thực.
 - API cũng hỗ trợ endpoint để reload simulation (khi cần khởi động lại toàn bộ pipeline). 
 
-### 6. Frontend Visualization (Highcharts Dashboard) (api/templates/dashboard.html):
+### 6. ✅ Frontend Visualization (Highcharts Dashboard) (api/templates/dashboard.html):
 
 - Hiển thị dữ liệu sinh tồn, xét nghiệm và kết quả dự đoán sepsis theo thời gian thực.
 
@@ -102,14 +102,14 @@ Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất
 
 - Giao diện tự động cập nhật định kỳ (polling từ Flask API) để hiển thị dữ liệu mới.
 
-### 7. Reload Server (reload_server.py):
+### 7. ✅ Reload Server (reload_server.py):
 
 Là service phụ trợ cho phép người dùng nhấn nút “Reload Simulation” trên dashboard.
 
 Khi được trigger, server này sẽ gọi lệnh để restart các container Docker liên quan (producer, spark, cassandra, flask), giúp khởi động lại toàn bộ mô phỏng một cách tự động mà không cần can thiệp thủ công.
 
 ## 🧠 4. Kiến trúc hệ thống
-### 1. Thu thập dữ liệu (Data Ingestion)
+### 1. ✅ Thu thập dữ liệu (Data Ingestion)
 
 - Dữ liệu được thu thập từ trang web: https://physionet.org/content/challenge-2019/1.0.0/training/
 - Hệ thống gồm 4 producer, mỗi producer đọc dữ liệu từ một tệp .psv đại diện cho một bệnh nhân. Dữ liệu được gửi theo thời gian thực vào Kafka Topic riêng biệt (icu_data_1 → icu_data_4).
@@ -118,7 +118,7 @@ Cơ chế Kafka streaming log giúp đảm bảo:
 - Dữ liệu không mất mát (durable storage).
 - Có thể mở rộng để thêm nhiều bệnh nhân / ICU trong tương lai.
 
-### 2. Xử lý & Dự đoán (Processing & Inference)
+### 2. ✅ Xử lý & Dự đoán (Processing & Inference)
 
 Dữ liệu sau khi được Kafka thu thập sẽ được Spark Streaming xử lý theo pipeline:
 
@@ -134,7 +134,7 @@ Mô hình dự đoán được huấn luyện từ repo: 👉 https://github.com
 
 Spark hoạt động ở chế độ micro-batch (streaming interval) để đảm bảo dữ liệu được cập nhật liên tục với độ trễ thấp (sub-second latency).
 
-### 3. Lưu trữ (Storage Layer)
+### 3. ✅ Lưu trữ (Storage Layer)
 
 Cassandra chịu trách nhiệm lưu trữ dữ liệu dạng time-series cho từng bệnh nhân.
 Ưu điểm:
@@ -147,7 +147,7 @@ Cassandra chịu trách nhiệm lưu trữ dữ liệu dạng time-series cho t�
 
 - Cấu trúc bảng được khởi tạo bằng file cassandra/init.cql.
 
-### 4. API & Visualization
+### 4. ✅ API & Visualization
 
 Flask cung cấp RESTful API cho frontend. Người dùng có thể:
 
