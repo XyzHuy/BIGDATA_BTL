@@ -2,16 +2,18 @@
      - Mở file .env
      - Gán giá trị cho biến PATIENT_ID tương ứng với bệnh nhân cần phân tích. 
 
-2 - Chạy trên terminal : 
-     - python reload_server.py  
+2 - Build Docker : 
+     - Chạy lệnh: docker-compose build 
 
-3 - Build Docker : 
-     - Mở một terminal mới, sau đó chạy lệnh: docker-compose build 
-
-4 - Chạy toàn bộ hệ thống : 
+3 - Chạy toàn bộ hệ thống : 
      - Chạy lệnh trên terminal: docker compose up -d
+     - Đợi spark-app ready 
      
-5 - Truy cập Dashboard : 
+4 - Truy cập Dashboard : 
      - Mở trình duyệt và truy cập: http://localhost:5000/dashboard
      - Chọn Patient ID mong muốn
      Nhấn Apply và đợi Spark app tải batch dữ liệu để hiển thị biểu đồ trực quan (visualization)
+
+5 - Để chạy lại giả lập gửi dữ liệu stream cho spark:
+     Stop container rồi run lại (trên Docker Desktop UI)
+     hoặc down -> compose up-d

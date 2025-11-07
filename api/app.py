@@ -33,32 +33,6 @@ def get_patient_ids():
 PATIENT_IDS = get_patient_ids()
 
 
-@app.route('/reload', methods=['POST'])
-def reload_simulation():
-    global is_loading
-    try:
-        is_loading = True
-
-        # Gửi tín hiệu ra host để restart docker, xóa bảng và xóa checkpoint
-        requests.post("http://host.docker.internal:6000/trigger-reload")
-
-        return jsonify({"status": "ok", "message": "Simulation reloaded successfully."})
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-    
-@app.route('/reload-done-internal', methods=['POST'])
-def reload_done_internal():
-    global is_loading
-    print("[Container] Reload completed ")
-    is_loading = False
-    return jsonify({"status": "ok"})
-
-@app.route('/reload-status')
-def reload_status():
-    """API cho frontend kiểm tra trạng thái loading"""
-    return jsonify({"loading": is_loading})
-
 @app.route('/health')
 def health():
     return jsonify({"status": "OK"})

@@ -57,7 +57,8 @@ services:
     ports:
       - "9042:9042"
     volumes:
-      - cassandra_data:/var/lib/cassandra
+      - type: tmpfs
+        target: /var/lib/cassandra
       - ./cassandra/init.cql:/docker-entrypoint-initdb.d/init.cql
     environment:
       - CASSANDRA_CLUSTER_NAME=ICUMonitoring
@@ -237,5 +238,3 @@ services:
       retries: 10
       start_period: 10s
 
-volumes:
-  cassandra_data:
