@@ -2,28 +2,116 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, current_timestamp
 from pyspark.sql.types import *
 from pyspark.sql import DataFrame
+import xgboost as xgb
 
-from tensorflow.keras.models import load_model
 import numpy as np
 import pandas as pd
+import pickle
+from collections import deque
 
 
-# load model pretrained
-model = load_model('/app/models/model.h5')  # đường dẫn thực tế
+# 1. Load XGBoost model & stats
 
-# load thống kê mean/std
-df_mean_std = pd.read_pickle('/app/models/mean_std_scaling.pkl')
+# Load XGBoost model
+xgb_model = pickle.load(open("/app/models/f120d4e02n8010val434.pickle.dat", "rb"))
 
-# định nghĩa các cột như training
-cols_cont = ['HR', 'MAP', 'O2Sat', 'SBP', 'Resp']
-cols_to_bin = ['Unit1', 'Gender', 'HospAdmTime', 'Age', 'DBP', 'Temp', 'Glucose', 
-                'Potassium', 'Hct', 'FiO2', 'Hgb', 'pH', 'BUN', 'WBC', 'Magnesium', 
-                'Creatinine', 'Platelets', 'Calcium', 'PaCO2', 'BaseExcess', 'Chloride', 
-                'HCO3', 'Phosphate', 'EtCO2', 'SaO2', 'PTT', 'Lactate', 'AST', 
-                'Alkalinephos', 'Bilirubin_total', 'TroponinI', 'Fibrinogen', 'Bilirubin_direct']
+# Hard-coded stats from original model
+varmeans = [84.58144338298742, 97.19395453339598, 36.977228240795384, 123.75046539637763, 82.40009988667639, 63.83055577034239, 18.72649785557987, 32.95765667291276, -0.6899191871174756, \
+    24.075480562219358, 0.5548386348703284, 7.37893402619616, 41.02186880800917, 92.65418774854838, 260.22338482309493, 23.91545210569777, 102.48366144100076, 7.557530849328269, 105.82790991400108, \
+        1.5106993531749389, 1.8361772575250843, 136.9322832898959, 2.646666023259181, 2.05145021490337, 3.544237652686153, 4.135527970939283, 2.114059461561731, 8.290099451999183, 30.79409334002751, 10.43083278791528, \
+            41.231193461563706, 11.446405019759258, 287.38570591681315, 196.01391078961922, 62.00946887985519, 0.5592690422043409, 0.49657112470087744, 0.5034288752991226, -56.12512176894499, 26.994992301299437]
+
+varstds = [17.3252, 2.9369, 0.77, 23.2316, 16.3418, 13.956, 5.0982, 7.9517, 4.2943, 4.3765, 11.1232, 0.0746, 9.2672, 10.893, 855.7468, 19.9943, 120.1227, 2.4332, 5.8805, 1.8056, 3.6941, 51.3107, 2.5262, 0.3979, 1.4233, 0.6421, 4.3115, 24.8062, 5.4917, 1.9687, 26.2177, 7.731, 153.0029, 103.6354, 16.3862, 0.4965, 0.5, 0.5, 162.2569, 29.0054]
+
+varlogstds = [0.2069, 0.0338, 0.0209, 0.1862, 0.1929, 0.2133, 0.2811, 0.2632, 0.1, 0.1, 0.1, 0.0102, 0.2117, 0.1413, 1.3713, 0.6972, 0.6114, 0.6183, 0.0564, 0.6841, 1.4805, 0.3181, 0.6703, 0.1821, 0.3854, 0.1478, 1.0199, 2.723, 0.1788, 0.1896, 0.425, 0.5176, 0.5046, 0.5522, 0.3135, 0.1, 0.1, 0.1, 0.1, 0.9707]
+varlogmeans = [4.4166, 4.576, 3.6101, 4.8009, 4.3928, 4.1334, 2.8926, 3.4633, 0.1, 0.1, 0.1, 1.9986, 3.6911, 4.5201, 4.104, 2.92, 4.3874, 1.9011, 4.6602, 0.1002, -0.5519, 4.8652, 0.7091, 0.7016, 1.1922, 1.4085, 0.0335, -0.8605, 3.4115, 2.327, 3.6051, 2.3098, 5.5347, 5.1412, 4.0841, 0.1, 0.1, 0.1, 0.1, 2.8862]
+
+# Thứ tự cột PHẢI khớp với varmeans (40 cột)
+feature_order = [
+    'HR', 'O2Sat', 'Temp', 'SBP', 'MAP', 'DBP', 'Resp', 'EtCO2', 'BaseExcess', 'HCO3',
+    'FiO2', 'pH', 'PaCO2', 'SaO2', 'AST', 'BUN', 'Alkalinephos', 'Calcium', 'Chloride',
+    'Creatinine', 'Bilirubin_direct', 'Glucose', 'Lactate', 'Magnesium', 'Phosphate',
+    'Potassium', 'Bilirubin_total', 'TroponinI', 'Hct', 'Hgb', 'PTT', 'WBC', 'Fibrinogen',
+    'Platelets', 'Age', 'Gender', 'Unit1', 'Unit2', 'HospAdmTime', 'ICULOS'
+]
+
+log_indices = {14, 15, 16, 19, 20, 22, 25, 26, 27, 30, 31, 32}  # 0-based
 
 
-# 1. Define Schema
+def predict_sepsis_xgb(pdf: pd.DataFrame, pid: str):
+    """
+    Dự đoán sepsis bằng mô hình XGBoost.
+    pdf: toàn bộ dữ liệu của bệnh nhân (đã sort theo ICULOS)
+    """
+    if len(pdf) == 0:
+        return {'prob': 0.0, 'label': 0}
+
+    try:
+        data_40 = pdf[feature_order].values  # (T, 40)
+    except KeyError as e:
+        print(f"[ERROR] Missing columns for patient {pid}: {e}")
+        return {'prob': 0.0, 'label': 0}
+
+    data = np.copy(data_40)
+    T, D = data.shape
+    if D != 40:
+        print(f"[ERROR] Expected 40 features, got {D} for {pid}")
+        return {'prob': 0.0, 'label': 0}
+
+    # Xử lý NaN
+    nan_idx = np.where(np.isnan(data))
+    mask = np.ones_like(data)
+    data[nan_idx] = np.take(varmeans, nan_idx[1])
+    mask[nan_idx] = 0
+
+    # Forward-fill
+    forward = np.copy(data[0, :])
+    for t in range(T):
+        for i in range(40):
+            if mask[t, i] == 1:
+                forward[i] = data[t, i]
+            else:
+                data[t, i] = forward[i]
+
+    # Tính delta
+    delta = np.zeros_like(data)
+    for t in range(1, T):
+        delta[t, :] = data[t, :] - data[t - 1, :]
+
+    # Chuẩn hóa
+    for i in range(40):
+        if i in log_indices:
+            # Đảm bảo giá trị > 0 trước khi log
+            data[:, i] = np.clip(data[:, i], 1e-6, None)
+            data[:, i] = 10 * (np.log(data[:, i]) - varlogmeans[i]) / varlogstds[i]
+        else:
+            data[:, i] = 10 * (data[:, i] - varmeans[i]) / varstds[i]
+
+    # Ghép: data + delta + mask → (T, 120)
+    full_data = np.concatenate([data, delta, mask], axis=1)  # (T, 120)
+
+    # Tạo vector input: hiện tại + 5 trước (tổng 6 khung)
+    row = list(full_data[-1, :])
+    for j in range(1, 6):
+        if T > j:
+            row.extend(full_data[-(j + 1), :])
+        else:
+            row.extend([0.0] * 120)
+
+    row = np.array([row])  # (1, 720)
+
+    # Dự đoán
+    try:
+        dtest = xgb.DMatrix(row)
+        pred_prob = float(xgb_model.predict(dtest)[0])
+        pred_label = int(pred_prob >= 0.5)
+        return {'prob': pred_prob, 'label': pred_label}
+    except Exception as e:
+        print(f"[ERROR] Prediction failed for {pid}: {e}")
+        return {'prob': 0.0, 'label': 0}
+
+
+# 2. Spark Schema & Session
 
 icu_schema = StructType([
     StructField("HR", DoubleType(), True),
@@ -70,9 +158,6 @@ icu_schema = StructType([
     StructField("icu_time_step", IntegerType(), True)
 ])
 
-
-# 2. Spark session
-
 spark = SparkSession.builder \
     .appName("KafkaToCassandraWithModel") \
     .config("spark.cassandra.connection.host", "cassandra") \
@@ -82,7 +167,7 @@ spark = SparkSession.builder \
 spark.sparkContext.setLogLevel("WARN")
 
 
-# 3. Read multiple Kafka topics
+# 3. Đọc dữ liệu từ Kafka
 
 topics = "icu_data_1,icu_data_2,icu_data_3,icu_data_4"
 
@@ -95,9 +180,6 @@ df = spark \
     .option("startingOffsets", "earliest") \
     .load()
 
-
-# 4. Parse JSON
-
 parsed_df = df.select(
     from_json(col("value").cast("string"), icu_schema).alias("data")
 ).select("data.*")
@@ -105,63 +187,10 @@ parsed_df = df.select(
 parsed_df = parsed_df.withColumn("event_time", current_timestamp())
 
 
-# 5. Placeholder inference model
+# 4. State và xử lý batch
 
-# Thêm dict lưu prediction state
-patient_predictions = {}
-def predict_sepsis_for_patient(pdf: pd.DataFrame, pid: str):
-    pdf = pdf.sort_values('ICULOS').reset_index(drop=True)
-
-    if len(pdf) < 10:
-        return patient_predictions.get(pid, {'prob': 0.0, 'label': 0})
-
-    # copy dữ liệu để xử lý inference
-    group = pdf.iloc[-10:].copy()
-
-    # 👉 Bỏ cột không dùng trong inference
-    group_for_infer = group.drop(columns=['Unit2', 'ICULOS'], errors='ignore')
-
-    # Fill NA, chuẩn hóa như trước
-    for c in cols_cont:
-        group_for_infer[c] = group_for_infer[c].fillna(method='bfill').fillna(method='ffill')
-
-    if group_for_infer[cols_cont].isna().any().any():
-        return patient_predictions.get(pid, {'prob': 0.0, 'label': 0})
-
-    for c in cols_cont:
-        group_for_infer[c] = (group_for_infer[c] - df_mean_std[c]['mean']) / df_mean_std[c]['std']
-
-    # Tạo X_cont, X_cat
-    X_cont = group_for_infer[cols_cont].values[np.newaxis, :, :]
-
-    X_binned = {}
-    for col in cols_to_bin:
-        val = group_for_infer[col].dropna().median()
-        if col not in ['Gender', 'Unit1']:
-            val = (val - df_mean_std[col]['mean']) / df_mean_std[col]['std']
-        X_binned[col] = val
-
-    X_cat = np.array(list(X_binned.values()), dtype=np.float32)[np.newaxis, :]
-    X_cat[np.isnan(X_cat)] = np.pi
-
-    pred = model.predict([X_cont, X_cat], verbose=0)
-    prob = float(pred[0][1])
-    label = int(prob >= 0.5)
-
-    patient_predictions[pid] = {'prob': prob, 'label': label}
-    return {'prob': prob, 'label': label}
-
-
-
-# 6. Function to process each micro-batch
-
-from collections import deque
-
-# State cho dữ liệu thô (để tạo window)
 patient_sequences = {}
-
-# State cho logic cảnh báo
-patient_warning_state = {}  # {pid: { 'has_warning': bool, 'last_positive_iculos': float, 'recent_labels': deque }}
+patient_warning_state = {}
 
 def process_batch(batch_df, batch_id):
     global patient_sequences, patient_warning_state
@@ -177,42 +206,41 @@ def process_batch(batch_df, batch_id):
             patient_sequences[pid] = group.copy()
         else:
             combined = pd.concat([patient_sequences[pid], group])
-            combined = combined.drop_duplicates(subset=['ICULOS']).sort_values('ICULOS').tail(48)
+            combined = combined.drop_duplicates(subset=['ICULOS']).sort_values('ICULOS')
+            # Giữ đủ lịch sử (không giới hạn cứng, hoặc có thể .tail(100) nếu cần)
             patient_sequences[pid] = combined
 
-        # Khởi tạo state cảnh báo nếu chưa có
         if pid not in patient_warning_state:
             patient_warning_state[pid] = {
                 'has_warning': False,
                 'last_positive_iculos': -1,
-                'first_warning_iculos': -1,  
+                'first_warning_iculos': -1,
                 'recent_labels': deque(maxlen=10),
                 'ever_confirmed': False
             }
 
-    # Chuẩn bị danh sách kết quả để ghi
     output_rows = []
-
-    # Xử lý TỪNG DÒNG trong batch gốc
     for idx, row in batch_pd.iterrows():
         pid = row['patient_id']
         current_iculos = row['ICULOS']
         
-        #  1. Dự đoán raw từ model 
+        # Lấy toàn bộ lịch sử đến thời điểm hiện tại
         hist = patient_sequences[pid]
         hist_upto = hist[hist['ICULOS'] <= current_iculos].sort_values('ICULOS')
-        result = predict_sepsis_for_patient(hist_upto, pid)
+        
+        # DỰ ĐOÁN BẰNG XGBOOST
+        result = predict_sepsis_xgb(hist_upto, pid)
         raw_label = result['label']
         prob = result['prob']
 
-        #  2. Cập nhật state cảnh báo 
+        # Cập nhật state cảnh báo 
         state = patient_warning_state[pid]
         state['recent_labels'].append(raw_label)
 
         if raw_label == 1:
             state['last_positive_iculos'] = current_iculos
 
-        #  3. Logic reset: nếu đã có warning nhưng >20h toàn 0 → reset 
+        # Reset warning
         if state['has_warning']:
             time_since_last_pos = current_iculos - state['last_positive_iculos']
             if (
@@ -226,18 +254,15 @@ def process_batch(batch_df, batch_id):
                 state['first_warning_iculos'] = -1
                 state['recent_labels'].clear()
                     
-
-        #  4. Logic kích hoạt: nếu chưa có warning, nhưng có ≥2 lần 1 trong 10 dòng gần nhất 
+        # Kích hoạt warning
         if not state['has_warning']:
             if sum(state['recent_labels']) >= 2:
                 state['has_warning'] = True
                 state['last_positive_iculos'] = current_iculos
                 state['first_warning_iculos'] = current_iculos
 
-        # Xác nhận true positive: nếu đã có warning và không reset trong 20h
-        # Trong logic confirmed:
+        # Xác nhận confirmed
         is_confirmed = state['ever_confirmed']
-            
         if state['has_warning']:
             if (
                 current_iculos - state['first_warning_iculos'] > 20
@@ -246,22 +271,21 @@ def process_batch(batch_df, batch_id):
                 and not all(x == 0 for x in state['recent_labels'])
             ):
                 is_confirmed = True
-                state['ever_confirmed'] = True  #  lưu lại trạng thái vĩnh viễn
+                state['ever_confirmed'] = True
 
-        #  5. Gán kết quả 
+        # Gán kết quả
         row_dict = row.to_dict()
-        row_dict['SepsisLabel'] = raw_label          # raw từ model
+        row_dict['SepsisLabel'] = raw_label
         row_dict['SepsisProb'] = prob
-        row_dict['SepsisWarning'] = int(state['has_warning'])  # cảnh báo đã xử lý
+        row_dict['SepsisWarning'] = int(state['has_warning'])
         row_dict['SepsisConfirmed'] = int(is_confirmed)
 
         output_rows.append(row_dict)
         print(f"[{pid}] ICULOS={current_iculos}, raw={raw_label}, has_warning={state['has_warning']}, "
-        f"recent={list(state['recent_labels'])}, last_pos={state['last_positive_iculos']}, "
-        f"first_warn={state['first_warning_iculos']}, confirmed={is_confirmed}")
-        
+              f"recent={list(state['recent_labels'])}, last_pos={state['last_positive_iculos']}, "
+              f"first_warn={state['first_warning_iculos']}, confirmed={is_confirmed}")
 
-    # Ghi toàn bộ dòng trong batch
+    # Ghi vào Cassandra
     if output_rows:
         output_df = spark.createDataFrame(pd.DataFrame(output_rows))
         output_df.write \
@@ -269,12 +293,10 @@ def process_batch(batch_df, batch_id):
             .mode("append") \
             .options(table="icu_readings", keyspace="sepsis_monitoring") \
             .save()
-
-        print(f"→ Wrote {len(output_rows)} rows to Cassandra (with SepsisWarning)")
-
+        print(f"→ Wrote {len(output_rows)} rows to Cassandra")
 
 
-# 7. Start streaming query
+# 5. Start streaming
 
 query = parsed_df.writeStream \
     .foreachBatch(process_batch) \
