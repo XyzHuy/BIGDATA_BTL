@@ -1,22 +1,23 @@
-FROM apache/spark:3.5.0
+FROM apache/spark:v3.2.3
 
 USER root
 
-
+# Cài pip3 (vì image chính thức không có sẵn)
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
-    ln -sf /usr/bin/python3 /usr/bin/python && \
+    apt-get install -y python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Đảm bảo lệnh `python` trỏ đến python3.7
+RUN ln -sf /usr/bin/python3.7 /usr/bin/python
+
 WORKDIR /app
 
-#  Copy requirements trước để cache pip install
 COPY app/requirements.txt .
 
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Cài xgboost==0.90 trước (để dễ phát hiện lỗi)
+RUN pip3 install --no-cache-dir xgboost==0.90 && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 COPY app/ .
-
-USER spark
 
