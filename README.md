@@ -72,6 +72,12 @@ Trong hệ thống này, 4 bệnh nhân được chọn làm mẫu, và dữ li�
 Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
     Crawl data -> Producer (.psv) -> Kafka -> Spark Streaming -> Cassandra -> Flask API -> Highcharts Dashboard
+    
+<p align="center">
+  <img src="https://raw.githubusercontent.com/XyzHuy/BIGDATA_BTL/main/Sơ-Đồ-Thiết-Kế-Hệ-Thống.png" width="1000">
+  <br>
+  <em>Hình ảnh mô tả pipeline hoạt động</em>
+</p>
 
  Chi tiết luồng hoạt động: 
 
