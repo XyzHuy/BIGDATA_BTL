@@ -1,11 +1,50 @@
 # 🏥 Hệ thống Giám sát Bệnh nhân ICU Thời Gian Thực Dựa Trên Dữ Liệu Sinh Lý Để Dự Đoán Nguy Cơ Nhiễm Trùng Huyết (Sepsis)
-## 📚 Table of Contents
+##  Table of Contents
+- [0. Hướng dẫn chạy](#-0-hướng-dẫn-chạy)
 - [1. Giới thiệu](#-1-giới-thiệu)
 - [2. Nguồn dữ liệu](#-2-nguồn-dữ-liệu)
 - [3. Luồng dữ liệu (Data Flow)](#-3-luồng-dữ-liệu-data-flow)
 - [4. Kiến trúc hệ thống](#-4-kiến-trúc-hệ-thống)
 - [5. Tổng kết](#-5-tổng-kết)
-## 🧭 1. Giới thiệu
+
+##  0. Hướng dẫn chạy
+### 1.  Chọn các bệnh nhân để theo dõi:
+- Mở file .env
+- Gán giá trị cho biến PATIENT_ID tương ứng với bệnh nhân cần phân tích.
+
+### 2.  Build Docker : 
+- Chạy lệnh: docker-compose build
+- Đợi spark-app ready
+
+### 3.  Chạy toàn bộ hệ thống : 
+- Chạy lệnh : docker compose up -d
+<p align="center">
+  <img src="https://raw.githubusercontent.com/XyzHuy/BIGDATA_BTL/main/Docker-Run.png" width="1000">
+  <br>
+  <em>Các container sau khi chạy thành công</em>
+</p>
+
+### 4.  Truy cập Dashboard : 
+- Mở trình duyệt và truy cập: http://localhost:5000/dashboard
+- Chọn Patient ID mong muốn
+- Nhấn Apply và đợi Spark app tải batch dữ liệu để hiển thị biểu đồ trực quan (visualization)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/XyzHuy/BIGDATA_BTL/main/DashBoard-1.png" width="1000">
+  <br>
+  <em></em>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/XyzHuy/BIGDATA_BTL/main/DashBoard-2.png" width="1000">
+  <br>
+  <em>Giao diện hiển thị</em>
+</p>
+
+### 5. Để chạy lại giả lập gửi dữ liệu stream cho spark:
+- Stop container rồi run lại (trên Docker Desktop UI) hoặc docker compose down rồi chạy lệnh docker compose up -d
+
+##  1. Giới thiệu
 
 Hệ thống giám sát bệnh nhân ICU thời gian thực được phát triển với mục tiêu theo dõi liên tục các chỉ số sinh tồn (vital signs) và các thông số xét nghiệm (laboratory values) của bệnh nhân đang điều trị tại khoa Chăm sóc tích cực (ICU).
 
@@ -14,7 +53,7 @@ Mục tiêu chính của hệ thống là phát hiện sớm nguy cơ nhiễm tr
 Nguồn dữ liệu, kiến trúc và mô hình trí tuệ nhân tạo được xây dựng dựa trên bộ dữ liệu PhysioNet/Computing in Cardiology Challenge 2019 (Sepsis Challenge).
 Hệ thống áp dụng kiến trúc Stream Processing kết hợp công nghệ Big Data và Machine Learning, cho phép xử lý dữ liệu ICU theo thời gian thực và mở rộng quy mô dễ dàng khi tích hợp thêm bệnh nhân hoặc ICU mới.
 
-## 💾 2. Nguồn dữ liệu
+##  2. Nguồn dữ liệu
 
 Dữ liệu đầu vào được mô phỏng từ bộ PhysioNet Sepsis Challenge 2019, bao gồm các tệp .psv (pipe-separated values). Mỗi tệp đại diện cho chuỗi thời gian của một bệnh nhân ICU, chứa các cột dữ liệu:
 
@@ -28,15 +67,15 @@ Dữ liệu đầu vào được mô phỏng từ bộ PhysioNet Sepsis Challeng
 
 Trong hệ thống này, 4 bệnh nhân được chọn làm mẫu, và dữ liệu của họ được streaming liên tục qua 4 luồng dữ liệu độc lập (Kafka topics), tương ứng với 4 producer mô phỏng các thiết bị y tế tại giường bệnh. 
 
-## 🔄 3. Luồng dữ liệu (Data Flow)
+##  3. Luồng dữ liệu (Data Flow)
 
 Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
     Crawl data -> Producer (.psv) -> Kafka -> Spark Streaming -> Cassandra -> Flask API -> Highcharts Dashboard
 
-⚙️ Chi tiết luồng hoạt động: 
+ Chi tiết luồng hoạt động: 
 
-### 1. 📻 Producer (producer/sepsis_producer.py):
+### 1.  Producer (producer/sepsis_producer.py):
 
 - Mỗi producer đọc tuần tự từng dòng trong file .psv.
 
@@ -46,13 +85,13 @@ Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
 - Các bệnh nhân được chọn để mô phỏng được cấu hình trong file .env (tối đa 4 bệnh nhân đồng thời).
 
-### 2. 👉 Kafka Broker:
+### 2.  Kafka Broker:
 
 - Đóng vai trò trung gian truyền dữ liệu theo mô hình publish–subscribe.
 
 - Đảm bảo tính toàn vẹn, độ trễ thấp và khả năng mở rộng khi nhiều producer và consumer hoạt động song song.
 
-### 3. 👉 Spark Streaming Application (spark/app/spark_stream.py):
+### 3.  Spark Streaming Application (spark/app/spark_stream.py):
 
 - Là consumer chính nhận dữ liệu từ Kafka.
 
@@ -64,7 +103,7 @@ Quy trình hoạt động của hệ thống diễn ra theo pipeline sau:
 
 - Cửa sổ thời gian (windowing) để phân tích chuỗi tín hiệu liên tục.
 
-Sau khi tiền xử lý, Spark gọi mô hình học máy đã huấn luyện sẵn (model.h5) để dự đoán xác suất sepsis tại thời điểm đó.
+Sau khi tiền xử lý, Spark gọi mô hình học máy đã huấn luyện sẵn để dự đoán xác suất sepsis tại thời điểm đó.
 
 Ghi kết quả gồm:
 
@@ -78,7 +117,7 @@ Ghi kết quả gồm:
 
 Toàn bộ kết quả được ghi trực tiếp vào Apache Cassandra thông qua Spark Cassandra Connector.
 
-### 4. ✅ Apache Cassandra (cassandra/init.cql):
+### 4.  Apache Cassandra (cassandra/init.cql):
 
 - Lưu trữ dữ liệu đầu ra trong bảng icu_readings thuộc keyspace sepsis_monitoring.
 
@@ -88,7 +127,7 @@ Cấu trúc dữ liệu tối ưu cho truy vấn thời gian thực theo:
 
 Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất đọc/ghi cao và khả năng mở rộng khi dữ liệu ICU tăng nhanh.  
 
-### 5. ✅ Flask API Server (api/app.py):
+### 5.  Flask API Server (api/app.py):
 
 - Đóng vai trò trung gian giữa Cassandra và Frontend.
 - Cung cấp các RESTful API endpoint cho phép truy vấn dữ liệu:
@@ -97,7 +136,7 @@ Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất
 - Kết quả được trả về dạng JSON, phù hợp cho frontend vẽ biểu đồ thời gian thực.
 - API cũng hỗ trợ endpoint để reload simulation (khi cần khởi động lại toàn bộ pipeline). 
 
-### 6. ✅ Frontend Visualization (Highcharts Dashboard) (api/templates/dashboard.html):
+### 6.  Frontend Visualization (Highcharts Dashboard) (api/templates/dashboard.html):
 
 - Hiển thị dữ liệu sinh tồn, xét nghiệm và kết quả dự đoán sepsis theo thời gian thực.
 
@@ -107,14 +146,14 @@ Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất
 
 - Giao diện tự động cập nhật định kỳ (polling từ Flask API) để hiển thị dữ liệu mới.
 
-### 7. ✅ Reload Server (reload_server.py):
+### 7.  Reload Server (reload_server.py):
 
 Là service phụ trợ cho phép người dùng nhấn nút “Reload Simulation” trên dashboard.
 
 Khi được trigger, server này sẽ gọi lệnh để restart các container Docker liên quan (producer, spark, cassandra, flask), giúp khởi động lại toàn bộ mô phỏng một cách tự động mà không cần can thiệp thủ công.
 
-## 🧠 4. Kiến trúc hệ thống
-### 1. ✅ Thu thập dữ liệu (Data Ingestion)
+##  4. Kiến trúc hệ thống
+### 1.  Thu thập dữ liệu (Data Ingestion)
 
 - Dữ liệu được thu thập từ trang web: https://physionet.org/content/challenge-2019/1.0.0/training/
 - Hệ thống gồm 4 producer, mỗi producer đọc dữ liệu từ một tệp .psv đại diện cho một bệnh nhân. Dữ liệu được gửi theo thời gian thực vào Kafka Topic riêng biệt (icu_data_1 → icu_data_4).
@@ -123,23 +162,23 @@ Cơ chế Kafka streaming log giúp đảm bảo:
 - Dữ liệu không mất mát (durable storage).
 - Có thể mở rộng để thêm nhiều bệnh nhân / ICU trong tương lai.
 
-### 2. ✅ Xử lý & Dự đoán (Processing & Inference)
+### 2.  Xử lý & Dự đoán (Processing & Inference)
 
 Dữ liệu sau khi được Kafka thu thập sẽ được Spark Streaming xử lý theo pipeline:
 
 - Preprocessing: làm sạch dữ liệu, chuẩn hóa và tạo vector đầu vào.
 
-- Model Inference: Sử dụng mô hình học sâu ( Deep Learning ) dự đoán xác suất sepsis.
+- Model Inference: Sử dụng mô hình học máy để dự đoán xác suất sepsis.
 
 - Postprocessing: gán nhãn, xác định mức cảnh báo.
 
 - Storage: ghi kết quả vào Cassandra.
 
-Mô hình dự đoán được huấn luyện từ repo: 👉 https://github.com/nerajbobra/sepsis-prediction 
+Mô hình dự đoán được xây dựng dựa trên bài báo
 
 Spark hoạt động ở chế độ micro-batch (streaming interval) để đảm bảo dữ liệu được cập nhật liên tục với độ trễ thấp (sub-second latency).
 
-### 3. ✅ Lưu trữ (Storage Layer)
+### 3.  Lưu trữ (Storage Layer)
 
 Cassandra chịu trách nhiệm lưu trữ dữ liệu dạng time-series cho từng bệnh nhân.
 Ưu điểm:
@@ -152,7 +191,7 @@ Cassandra chịu trách nhiệm lưu trữ dữ liệu dạng time-series cho t�
 
 - Cấu trúc bảng được khởi tạo bằng file cassandra/init.cql.
 
-### 4. ✅ API & Visualization
+### 4.  API & Visualization
 
 Flask cung cấp RESTful API cho frontend. Người dùng có thể:
 
