@@ -215,7 +215,7 @@ Flask cung cấp RESTful API cho frontend. Người dùng có thể:
 
 - Cập nhật dữ liệu tự động (AJAX polling).
 
-##  5. Tổng kết
+## 5. Tổng kết
 
 Hệ thống giám sát sepsis thời gian thực cho bệnh nhân ICU là một giải pháp kết hợp công nghệ Big Data, xử lý luồng (stream processing) và Machine Learning để hỗ trợ y tế chủ động.
 Toàn bộ pipeline được thiết kế mô-đun hóa, dễ mở rộng, và có thể triển khai trên môi trường Docker Compose hoặc Kubernetes.
