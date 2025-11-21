@@ -1,10 +1,10 @@
 # 🏥 Hệ thống Giám sát Bệnh nhân ICU Thời Gian Thực Dựa Trên Dữ Liệu Sinh Lý Để Dự Đoán Nguy Cơ Nhiễm Trùng Huyết (Sepsis)
 ## 📚 Table of Contents
 - [1. Giới thiệu](#-1-giới-thiệu)
-- [2. Nguồn dữ liệu](#2-nguon-du-lieu)
-- [3. Luồng dữ liệu (Data Flow)](#3-luong-du-lieu-data-flow)
-- [4. Kiến trúc hệ thống](#4-kien-truc-he-thong)
-- [5. Tổng kết](#5-tong-ket)
+- [2. Nguồn dữ liệu](#-2-nguồn-dữ-liệu)
+- [3. Luồng dữ liệu (Data Flow)](#3-luồng-dữ-liệu-data-flow)
+- [4. Kiến trúc hệ thống](#4-kiến-trúc-hệ-thống)
+- [5. Tổng kết](#5-tổng-kết)
 ## 🧭 1. Giới thiệu
 
 Hệ thống giám sát bệnh nhân ICU thời gian thực được phát triển với mục tiêu theo dõi liên tục các chỉ số sinh tồn (vital signs) và các thông số xét nghiệm (laboratory values) của bệnh nhân đang điều trị tại khoa Chăm sóc tích cực (ICU).
