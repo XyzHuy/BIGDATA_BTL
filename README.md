@@ -4,8 +4,7 @@
 - [1. Giới thiệu](#1-giới-thiệu)
 - [2. Nguồn dữ liệu](#2-nguồn-dữ-liệu)
 - [3. Luồng dữ liệu (Data Flow)](#3-luồng-dữ-liệu-data-flow)
-- [4. Kiến trúc hệ thống](#4-kiến-trúc-hệ-thống)
-- [5. Tổng kết](#5-tổng-kết)
+- [4. Tổng kết](#4-tổng-kết)
 
 ##  0. Hướng dẫn chạy
 ### 1.  Chọn các bệnh nhân để theo dõi:
@@ -152,70 +151,9 @@ Thiết kế theo mô hình distributed column store, đảm bảo hiệu suất
 
 - Giao diện tự động cập nhật định kỳ (polling từ Flask API) để hiển thị dữ liệu mới.
 
-### 7.  Reload Server (reload_server.py):
 
-Là service phụ trợ cho phép người dùng nhấn nút “Reload Simulation” trên dashboard.
 
-Khi được trigger, server này sẽ gọi lệnh để restart các container Docker liên quan (producer, spark, cassandra, flask), giúp khởi động lại toàn bộ mô phỏng một cách tự động mà không cần can thiệp thủ công.
-
-##  4. Kiến trúc hệ thống
-### 1.  Thu thập dữ liệu (Data Ingestion)
-
-- Dữ liệu được thu thập từ trang web: https://physionet.org/content/challenge-2019/1.0.0/training/
-- Hệ thống gồm 4 producer, mỗi producer đọc dữ liệu từ một tệp .psv đại diện cho một bệnh nhân. Dữ liệu được gửi theo thời gian thực vào Kafka Topic riêng biệt (icu_data_1 → icu_data_4).
-
-Cơ chế Kafka streaming log giúp đảm bảo:
-- Dữ liệu không mất mát (durable storage).
-- Có thể mở rộng để thêm nhiều bệnh nhân / ICU trong tương lai.
-
-### 2.  Xử lý & Dự đoán (Processing & Inference)
-
-Dữ liệu sau khi được Kafka thu thập sẽ được Spark Streaming xử lý theo pipeline:
-
-- Preprocessing: làm sạch dữ liệu, chuẩn hóa và tạo vector đầu vào.
-
-- Model Inference: Sử dụng mô hình học máy để dự đoán xác suất sepsis.
-
-- Postprocessing: gán nhãn, xác định mức cảnh báo.
-
-- Storage: ghi kết quả vào Cassandra.
-
-Mô hình dự đoán được xây dựng dựa trên bài báo
-
-Spark hoạt động ở chế độ micro-batch (streaming interval) để đảm bảo dữ liệu được cập nhật liên tục với độ trễ thấp (sub-second latency).
-
-### 3.  Lưu trữ (Storage Layer)
-
-Cassandra chịu trách nhiệm lưu trữ dữ liệu dạng time-series cho từng bệnh nhân.
-Ưu điểm:
-
-- Phân tán dữ liệu theo patient_id.
-
-- Đọc/ghi song song tốc độ cao.
-
-- Bảo đảm tính khả dụng (high availability) trong môi trường phân tán.
-
-- Cấu trúc bảng được khởi tạo bằng file cassandra/init.cql.
-
-### 4.  API & Visualization
-
-Flask cung cấp RESTful API cho frontend. Người dùng có thể:
-
-- Lấy dữ liệu realtime theo ID bệnh nhân.
-
-- Lọc dữ liệu theo khoảng thời gian.
-
-- Theo dõi biểu đồ sepsis risk (xác suất theo thời gian).
-
-- Frontend được xây dựng bằng HTML + Highcharts, cho phép:
-
-- Hiển thị nhiều biểu đồ đồng thời (theo từng chỉ số).
-
-- Tô màu vùng cảnh báo khi phát hiện sepsis (area fill đỏ nhạt).
-
-- Cập nhật dữ liệu tự động (AJAX polling).
-
-## 5. Tổng kết
+## 4. Tổng kết
 
 Hệ thống giám sát sepsis thời gian thực cho bệnh nhân ICU là một giải pháp kết hợp công nghệ Big Data, xử lý luồng (stream processing) và Machine Learning để hỗ trợ y tế chủ động.
 Toàn bộ pipeline được thiết kế mô-đun hóa, dễ mở rộng, và có thể triển khai trên môi trường Docker Compose hoặc Kubernetes.
