@@ -1,6 +1,6 @@
 # 🏥 Hệ thống Giám sát Bệnh nhân ICU Thời Gian Thực Dựa Trên Dữ Liệu Sinh Lý Để Dự Đoán Nguy Cơ Nhiễm Trùng Huyết (Sepsis)
 ## 📚 Table of Contents
-- [1. Giới thiệu](##1-giới-thiệu)
+- [1. Giới thiệu](#-1-giới-thiệu)
 - [2. Nguồn dữ liệu](#2-nguon-du-lieu)
 - [3. Luồng dữ liệu (Data Flow)](#3-luong-du-lieu-data-flow)
 - [4. Kiến trúc hệ thống](#4-kien-truc-he-thong)
